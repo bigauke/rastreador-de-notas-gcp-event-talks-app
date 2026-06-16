@@ -1,0 +1,146 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Rastreador de Notas de Lançamento do BigQuery</title>
+    <meta name="description" content="Um belo painel para acompanhar as notas de lançamento do BigQuery e compartilhar atualizações diretamente no Twitter/X.">
+    <!-- Google Fonts -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Outfit:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+    <!-- Custom Style Sheet -->
+    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+</head>
+<body>
+    <div class="glass-bg-glows">
+        <div class="glow glow-1"></div>
+        <div class="glow glow-2"></div>
+    </div>
+
+    <div class="app-container">
+        <!-- Header -->
+        <header class="app-header">
+            <div class="header-logo">
+                <svg class="bq-logo" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2005/svg">
+                    <path d="M19 3H5C3.9 3 3 3.9 3 5V19C3 20.1 3.9 21 5 21H19C20.1 21 21 20.1 21 19V5C21 3.9 20.1 3 19 3ZM9 17H7V10H9V17ZM13 17H11V7H13V17ZM17 17H15V13H17V17Z" fill="url(#logo-gradient)"/>
+                    <defs>
+                        <linearGradient id="logo-gradient" x1="3" y1="3" x2="21" y2="21" gradientUnits="userSpaceOnUse">
+                            <stop stop-color="#4285F4"/>
+                            <stop offset="1" stop-color="#34A853"/>
+                        </linearGradient>
+                    </defs>
+                </svg>
+                <div class="logo-text">
+                    <h1>BigQuery</h1>
+                    <span>Notas de Lançamento</span>
+                </div>
+            </div>
+            <div class="header-actions">
+                <button id="refresh-btn" class="btn btn-primary" title="Atualizar Notas de Lançamento">
+                    <svg id="spinner" class="icon icon-refresh" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2005/svg">
+                        <path d="M17.65 6.35C16.2 4.9 14.21 4 12 4C7.58 4 4.01 7.58 4.01 12C4.01 16.42 7.58 20 12 20C15.73 20 18.84 17.45 19.73 14H17.65C16.83 16.33 14.61 18 12 18C8.69 18 6 15.31 6 12C6 8.69 8.69 6 12 6C13.66 6 15.14 6.69 16.22 7.78L13 11H20V4L17.65 6.35Z" fill="currentColor"/>
+                    </svg>
+                    <span>Atualizar</span>
+                </button>
+            </div>
+        </header>
+
+        <!-- Main Body -->
+        <main class="app-main">
+            <!-- Sidebar for Dates -->
+            <section class="sidebar-panel">
+                <div class="panel-header">
+                    <h2>Histórico</h2>
+                    <span id="date-count" class="badge">0 Datas</span>
+                </div>
+                <div id="date-list" class="date-list-container">
+                    <!-- Dates will be populated dynamically -->
+                    <div class="loading-placeholder">
+                        <div class="skeleton-line" style="width: 80%;"></div>
+                        <div class="skeleton-line" style="width: 90%;"></div>
+                        <div class="skeleton-line" style="width: 70%;"></div>
+                        <div class="skeleton-line" style="width: 85%;"></div>
+                    </div>
+                </div>
+            </section>
+
+            <!-- Main Content Area -->
+            <section class="content-panel">
+                <div class="panel-header">
+                    <div class="selected-date-info">
+                        <h2 id="active-date-title">Selecione uma Data</h2>
+                        <span id="active-date-raw" class="date-sub">Nenhuma data selecionada</span>
+                    </div>
+                    <div class="panel-actions">
+                        <button id="share-all-btn" class="btn btn-secondary" style="display: none;">
+                            <span>Compartilhar Resumo</span>
+                        </button>
+                    </div>
+                </div>
+
+                <div id="updates-container" class="updates-container">
+                    <div class="empty-state">
+                        <svg class="empty-icon" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2005/svg">
+                            <path d="M19 3H5C3.9 3 3 4.9 3 6V18C3 19.1 3.9 21 5 21H19C20.1 21 21 19.1 21 18V6C21 4.9 20.1 3 19 3ZM19 18H5V8H19V18ZM17 10H7V12H17V10ZM15 14H7V16H15V14Z" fill="currentColor"/>
+                        </svg>
+                        <h3>Nenhum Lançamento Selecionado</h3>
+                        <p>Escolha uma data na barra lateral para visualizar as atualizações e recursos detalhados.</p>
+                    </div>
+                </div>
+            </section>
+
+            <!-- Tweeter Sidebar / Composer -->
+            <section class="composer-panel">
+                <div class="panel-header">
+                    <h2>Compartilhar no X / Twitter</h2>
+                </div>
+                <div class="composer-body">
+                    <div class="composer-field-group">
+                        <label for="tweet-textarea">Rascunho do Tweet</label>
+                        <div class="textarea-wrapper">
+                            <textarea id="tweet-textarea" placeholder="Selecione uma atualização na lista ou digite algo aqui para criar um Tweet..."></textarea>
+                            <div class="character-counter">
+                                <span id="char-count">0</span> / 280
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="composer-meta">
+                        <div class="meta-item">
+                            <span class="meta-label">Data Selecionada:</span>
+                            <span id="composer-date-tag">—</span>
+                        </div>
+                        <div class="meta-item">
+                            <span class="meta-label">Incluir Link da Nota:</span>
+                            <label class="toggle-switch">
+                                <input type="checkbox" id="include-link-toggle" checked>
+                                <span class="slider"></span>
+                            </label>
+                        </div>
+                    </div>
+
+                    <button id="tweet-btn" class="btn btn-tweet" disabled>
+                        <svg class="x-logo" viewBox="0 0 24 24" fill="currentColor" xmlns="http://www.w3.org/2005/svg">
+                            <path d="M18.244 2.25h3.308l-7.227 8.26 8.502 11.24H16.17l-5.214-6.817L4.99 21.75H1.68l7.73-8.835L1.254 2.25H8.08l4.713 6.231zm-1.161 17.52h1.833L7.084 4.126H5.117z"/>
+                        </svg>
+                        <span>Postar no X</span>
+                    </button>
+                    
+                    <div class="tweet-tips">
+                        <h4>Dicas para compartilhar:</h4>
+                        <ul>
+                            <li>Clique no botão <strong>Rascunho</strong> em qualquer cartão de atualização para carregá-lo aqui.</li>
+                            <li>Você pode editar o texto antes de enviá-lo ao X.</li>
+                            <li>O contador de caracteres fica vermelho se você passar de 280 caracteres.</li>
+                        </ul>
+                    </div>
+                </div>
+            </section>
+        </main>
+    </div>
+
+    <!-- Script File -->
+    <script src="{{ url_for('static', filename='script.js') }}"></script>
+</body>
+</html>
