@@ -13,6 +13,7 @@ document.addEventListener('DOMContentLoaded', () => {
     const composerDateTag = document.getElementById('composer-date-tag');
     const includeLinkToggle = document.getElementById('include-link-toggle');
     const shareAllBtn = document.getElementById('share-all-btn');
+    const exportCsvBtn = document.getElementById('export-csv-btn');
 
     // State
     let releaseNotes = [];
@@ -46,6 +47,7 @@ document.addEventListener('DOMContentLoaded', () => {
             
             if (result.success && result.data && result.data.length > 0) {
                 releaseNotes = result.data;
+                exportCsvBtn.style.display = 'inline-flex';
                 renderDateList(releaseNotes);
                 // Select the first entry by default
                 selectEntry(releaseNotes[0]);
@@ -240,6 +242,12 @@ document.addEventListener('DOMContentLoaded', () => {
                 <div class="update-card-header">
                     <span class="type-badge ${typeClass}">${escapeHtml(translateType(update.type))}</span>
                     <div class="card-actions">
+                        <button class="btn-card-action copy-text-btn" title="Copiar atualização para a área de transferência">
+                            <svg class="icon" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2005/svg" style="width:12px;height:12px;">
+                                <path d="M16 1H4C2.9 1 2 1.9 2 3V17H4V3H16V1ZM19 5H8C6.9 5 6 5.9 6 7V21C6 22.1 6.9 23 8 23H19C20.1 23 21 22.1 21 21V7C21 5.9 20.1 5 19 5ZM19 21H8V7H19V21Z" fill="currentColor"/>
+                            </svg>
+                            <span>Copiar</span>
+                        </button>
                         <button class="btn-card-action tweet-select-btn" title="Enviar atualização para o rascunho de Tweet">
                             <svg class="x-logo" viewBox="0 0 24 24" fill="currentColor" xmlns="http://www.w3.org/2005/svg" style="width:12px;height:12px;">
                                 <path d="M18.244 2.25h3.308l-7.227 8.26 8.502 11.24H16.17l-5.214-6.817L4.99 21.75H1.68l7.73-8.835L1.254 2.25H8.08l4.713 6.231zm-1.161 17.52h1.833L7.084 4.126H5.117z"/>
@@ -262,6 +270,21 @@ document.addEventListener('DOMContentLoaded', () => {
                 setTimeout(() => {
                     card.style.borderColor = 'var(--border-glass)';
                 }, 1000);
+            });
+
+            // Add event listener to the specific "Copy" button
+            card.querySelector('.copy-text-btn').addEventListener('click', () => {
+                navigator.clipboard.writeText(plainText).then(() => {
+                    const btnSpan = card.querySelector('.copy-text-btn span');
+                    btnSpan.textContent = 'Copiado!';
+                    card.style.borderColor = 'var(--accent-green)';
+                    setTimeout(() => {
+                        btnSpan.textContent = 'Copiar';
+                        card.style.borderColor = 'var(--border-glass)';
+                    }, 2000);
+                }).catch(err => {
+                    console.error('Erro ao copiar texto: ', err);
+                });
             });
             
             updatesContainer.appendChild(card);
@@ -390,6 +413,37 @@ document.addEventListener('DOMContentLoaded', () => {
         updateComposer();
     }
 
+    // Export loaded release notes to a localized UTF-8 CSV file (with Excel BOM)
+    function exportToCSV() {
+        if (releaseNotes.length === 0) return;
+        
+        const rows = [["Data", "Tipo", "Atualização", "Link de Origem"]];
+        
+        releaseNotes.forEach(entry => {
+            const updates = parseUpdatesFromContent(entry.content);
+            const dateStr = entry.title || 'Sem Data';
+            const linkStr = entry.link || '';
+            
+            updates.forEach(u => {
+                const plainText = getPlainTextFromHtml(u.content);
+                rows.push([dateStr, translateType(u.type), plainText, linkStr]);
+            });
+        });
+        
+        // Convert rows to CSV string
+        const csvString = rows.map(e => e.map(val => `"${val.replace(/"/g, '""')}"`).join(",")).join("\n");
+        
+        const blob = new Blob(["\uFEFF" + csvString], { type: 'text/csv;charset=utf-8;' });
+        const url = URL.createObjectURL(blob);
+        const link = document.createElement("a");
+        link.setAttribute("href", url);
+        link.setAttribute("download", `notas_versao_bigquery.csv`);
+        link.style.visibility = 'hidden';
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+    }
+
     // Escape HTML helper
     function escapeHtml(text) {
         if (!text) return '';
@@ -409,6 +463,7 @@ document.addEventListener('DOMContentLoaded', () => {
     tweetBtn.addEventListener('click', postTweet);
     includeLinkToggle.addEventListener('change', updateComposer);
     shareAllBtn.addEventListener('click', generateDaySummaryTweet);
+    exportCsvBtn.addEventListener('click', exportToCSV);
 
     // Initial Fetch
     fetchNotes();
