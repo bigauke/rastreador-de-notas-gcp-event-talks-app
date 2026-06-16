@@ -14,6 +14,8 @@ document.addEventListener('DOMContentLoaded', () => {
     const includeLinkToggle = document.getElementById('include-link-toggle');
     const shareAllBtn = document.getElementById('share-all-btn');
     const exportCsvBtn = document.getElementById('export-csv-btn');
+    const themeToggleBtn = document.getElementById('theme-toggle-btn');
+    const themeIconPath = document.getElementById('theme-icon-path');
 
     // State
     let releaseNotes = [];
@@ -444,6 +446,27 @@ document.addEventListener('DOMContentLoaded', () => {
         document.body.removeChild(link);
     }
 
+    // Theme logic
+    const sunPath = "M12 3V4M12 20V21M4 12H3M21 12H20M18.36 5.64L17.65 6.35M6.35 17.65L5.64 18.36M18.36 18.36L17.65 17.65M6.35 6.35L5.64 7.06M12 8C9.79 8 8 9.79 8 12C8 14.21 9.79 16 12 16C14.21 16 16 14.21 16 12C16 9.79 14.21 8 12 8Z";
+    const moonPath = "M21 12.79A9 9 0 1111.21 3 7 7 0 0021 12.79z";
+
+    function initTheme() {
+        const savedTheme = localStorage.getItem('theme') || 'dark';
+        if (savedTheme === 'light') {
+            document.documentElement.classList.add('light-theme');
+            themeIconPath.setAttribute('d', moonPath);
+        } else {
+            document.documentElement.classList.remove('light-theme');
+            themeIconPath.setAttribute('d', sunPath);
+        }
+    }
+
+    function toggleTheme() {
+        const isLight = document.documentElement.classList.toggle('light-theme');
+        localStorage.setItem('theme', isLight ? 'light' : 'dark');
+        themeIconPath.setAttribute('d', isLight ? moonPath : sunPath);
+    }
+
     // Escape HTML helper
     function escapeHtml(text) {
         if (!text) return '';
@@ -464,7 +487,9 @@ document.addEventListener('DOMContentLoaded', () => {
     includeLinkToggle.addEventListener('change', updateComposer);
     shareAllBtn.addEventListener('click', generateDaySummaryTweet);
     exportCsvBtn.addEventListener('click', exportToCSV);
+    themeToggleBtn.addEventListener('click', toggleTheme);
 
     // Initial Fetch
+    initTheme();
     fetchNotes();
 });
